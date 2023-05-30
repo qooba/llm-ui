@@ -151,7 +151,6 @@ async fn main() -> std::io::Result<()> {
         infer(&args, rx_infer, tx_callback);
     });
 
-
     HttpServer::new(|| {
         App::new()
             .route("/api/chat", web::get().to(chat))
