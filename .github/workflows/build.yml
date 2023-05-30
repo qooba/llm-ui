@@ -2,9 +2,9 @@ name: build
 
 on:
   push:
-    branches: [master, "rust-v*"]
+    branches: [main, "rust-v*"]
   pull_request:
-    branches: [master, "rust-v*"]
+    branches: [main, "rust-v*"]
 
 jobs:
   format:
