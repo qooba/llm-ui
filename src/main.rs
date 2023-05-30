@@ -130,7 +130,7 @@ async fn main() -> std::io::Result<()> {
     });
 
     let (host, port) = match &c_args {
-        Args::Llama(args) => (args.host.to_string(),args.port)
+        Args::Llama(args) => (args.host.to_string(), args.port),
     };
 
     HttpServer::new(|| App::new().route("/chat", web::get().to(chat)))
