@@ -43,7 +43,7 @@ jobs:
         working-directory: .
         run: cargo clippy --no-default-features --tests
       - name: Check no default features
-        working-directory: ./yummy-rs
+        working-directory: .
         run: cargo check --no-default-features
 
   test:
