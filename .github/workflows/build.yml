@@ -18,7 +18,7 @@ jobs:
           toolchain: stable
           override: true
       - name: Format
-        working-directory: ./yummy-rs
+        working-directory: .
         run: cargo fmt -- --check
 
   build:
@@ -40,7 +40,7 @@ jobs:
           override: true
       - uses: Swatinem/rust-cache@v2
       - name: build and lint with clippy
-        working-directory: ./yummy-rs
+        working-directory: .
         run: cargo clippy --no-default-features --tests
       - name: Check no default features
         working-directory: ./yummy-rs
@@ -65,5 +65,5 @@ jobs:
           override: true
       - uses: Swatinem/rust-cache@v2
       - name: Run tests
-        working-directory: ./yummy-rs
+        working-directory: .
         run: cargo test --verbose
