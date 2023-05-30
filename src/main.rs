@@ -83,7 +83,6 @@ fn infer(
     rx_infer: std::sync::mpsc::Receiver<String>,
     tx_callback: tokio::sync::mpsc::Sender<String>,
 ) -> Result<()> {
-
     let vocabulary_source = args.to_vocabulary_source();
     let model_architecture = args.model_architecture;
     let model_path = &args.model_path;
