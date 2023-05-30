@@ -1,3 +1,4 @@
+use actix_files as fs;
 use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
 use anyhow::Result;
 use bytes::{Bytes, BytesMut};
@@ -133,8 +134,12 @@ async fn main() -> std::io::Result<()> {
         Args::Llama(args) => (args.host.to_string(), args.port),
     };
 
-    HttpServer::new(|| App::new().route("/chat", web::get().to(chat)))
-        .bind((host, port))?
-        .run()
-        .await
+    HttpServer::new(|| {
+        App::new()
+            .route("/api/chat", web::get().to(chat))
+            .service(fs::Files::new("/", std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("static")))
+    })
+    .bind((host, port))?
+    .run()
+    .await
 }

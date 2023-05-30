@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/1.9.1/showdown.min.js"></script>
+    <script src="/app.js"></script>
+    <style>
+        #chat-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding-top: 120px;
+        }
+        #user-message, #bot-message {
+            margin-bottom: 15px;
+        }
+
+        #user-message {
+            margin-top: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div id="chat-container" class="container">
+        
+        <div class="input-group">
+            <input type="text" id="user-message" class="form-control" placeholder="Type your message here...">
+            <span class="input-group-btn">
+                <button class="btn btn-primary" id="send-message" type="button">Send</button>
+            </span>
+        </div>
+    </div>
+</body>
+</html>
