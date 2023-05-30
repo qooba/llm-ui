@@ -8,31 +8,37 @@ use once_cell::sync::{Lazy, OnceCell};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::error::Error;
-use std::io::Write;
 use std::sync::mpsc::{sync_channel, SyncSender};
 use std::sync::Arc;
 use std::thread;
+use std::{convert::Infallible, io::Write, path::PathBuf};
 use tokio::sync::mpsc::{channel, Receiver};
 use tokio::sync::Mutex;
 
 #[derive(Parser, Debug, Clone)]
-#[command(author, version, about, long_about = None)]
-pub enum Args {
-    /// Use a LLaMA model
-    #[command()]
-    Llama(Box<BaseArgs>),
-}
-
-#[derive(Parser, Debug, Clone)]
-pub struct BaseArgs {
-    #[arg(short, long)]
-    model: String,
-
-    #[arg(short, long)]
+struct Args {
+    model_architecture: llm::ModelArchitecture,
+    model_path: PathBuf,
+    #[arg(long, short = 'v')]
+    vocabulary_path: Option<PathBuf>,
+    #[arg(long, short = 'r')]
+    vocabulary_repository: Option<String>,
+    #[arg(long, short = 'h')]
     host: String,
-
-    #[arg(short, long)]
+    #[arg(long, short = 'p')]
     port: u16,
+}
+impl Args {
+    pub fn to_vocabulary_source(&self) -> llm::VocabularySource {
+        match (&self.vocabulary_path, &self.vocabulary_repository) {
+            (Some(_), Some(_)) => {
+                panic!("Cannot specify both --vocabulary-path and --vocabulary-repository");
+            }
+            (Some(path), None) => llm::VocabularySource::HuggingFaceTokenizerFile(path.to_owned()),
+            (None, Some(repo)) => llm::VocabularySource::HuggingFaceRemote(repo.to_owned()),
+            (None, None) => llm::VocabularySource::Model,
+        }
+    }
 }
 
 const END: &str = "<<END>>";
@@ -72,33 +78,53 @@ async fn chat(chat_request: web::Query<ChatRequest>) -> Result<impl Responder, B
         .streaming(Box::pin(stream_tasks)))
 }
 
-fn infer<M: llm::KnownModel + 'static>(
-    args: &BaseArgs,
+fn infer(
+    args: &Args,
     rx_infer: std::sync::mpsc::Receiver<String>,
     tx_callback: tokio::sync::mpsc::Sender<String>,
 ) -> Result<()> {
-    let llm_model = llm::load::<llm::models::Llama>(
-        std::path::Path::new(&args.model),
+    let vocabulary_source = args.to_vocabulary_source();
+    let model_architecture = args.model_architecture;
+    let model_path = &args.model_path;
+    let now = std::time::Instant::now();
+
+    let llm_model = llm::load_dynamic(
+        model_architecture,
+        &model_path,
+        vocabulary_source,
         Default::default(),
         llm::load_progress_callback_stdout,
     )
-    .unwrap_or_else(|err| panic!("Failed to load model: {err}"));
+    .unwrap_or_else(|err| {
+        panic!("Failed to load {model_architecture} model from {model_path:?}: {err}")
+    });
+
+    println!(
+        "Model fully loaded! Elapsed: {}ms",
+        now.elapsed().as_millis()
+    );
 
     while let Ok(msg) = rx_infer.recv() {
         let prompt = msg.to_string();
         let mut session = llm_model.start_session(Default::default());
+
         let res = session.infer::<std::convert::Infallible>(
-            &llm_model,
+            llm_model.as_ref(),
             &mut rand::thread_rng(),
             &llm::InferenceRequest {
-                prompt: &prompt,
+                prompt: Some(prompt).as_deref().unwrap().into(),
+                parameters: &llm::InferenceParameters::default(),
                 play_back_previous_tokens: false,
-                ..Default::default()
+                maximum_token_count: None,
             },
             &mut Default::default(),
-            |t| {
-                tx_callback.blocking_send(t.to_string());
-                Ok(())
+            |r| match r {
+                llm::InferenceResponse::PromptToken(t)
+                | llm::InferenceResponse::InferredToken(t) => {
+                    tx_callback.blocking_send(t.to_string());
+                    Ok(llm::InferenceFeedback::Continue)
+                }
+                _ => Ok(llm::InferenceFeedback::Continue),
             },
         );
 
@@ -111,8 +137,8 @@ fn infer<M: llm::KnownModel + 'static>(
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let cli_args = Args::parse();
-    println!("{cli_args:#?}");
+    let args = Args::parse();
+    println!("{args:#?}");
 
     let (tx_infer, rx_infer) = sync_channel::<String>(3);
     let (tx_callback, rx_callback) = channel::<String>(3);
@@ -121,23 +147,21 @@ async fn main() -> std::io::Result<()> {
     RX_CALLBACK.set(Arc::new(Mutex::new(rx_callback))).unwrap();
 
     //"/home/jovyan/rust-src/llm-ui/models/ggml-model-q4_0.binA
-    let c_args = cli_args.clone();
+    let c_args = args.clone();
     thread::spawn(move || {
-        match &cli_args {
-            Args::Llama(args) => {
-                infer::<llm::models::Llama>(&args, rx_infer, tx_callback);
-            }
-        };
+        infer(&args, rx_infer, tx_callback);
     });
 
-    let (host, port) = match &c_args {
-        Args::Llama(args) => (args.host.to_string(), args.port),
-    };
+    let host = c_args.host.to_string();
+    let port: u16 = c_args.port;
 
     HttpServer::new(|| {
         App::new()
             .route("/api/chat", web::get().to(chat))
-            .service(fs::Files::new("/", std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("static")))
+            .service(fs::Files::new(
+                "/",
+                std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("static"),
+            ))
     })
     .bind((host, port))?
     .run()
