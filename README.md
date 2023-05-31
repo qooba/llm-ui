@@ -2,4 +2,4 @@
 
 Simple web ui for [llm](https://github.com/rustformers/llm) library.
 
-![LLM UI in action](./docs/llm-ui.png)
+![LLM UI in action](./docs/llm-ui.gif)
