@@ -1,6 +1,5 @@
 $(document).ready(function() {
     const apiUrl = `${window.origin}/api/chat`; // Replace with your API URL
-    const converter = new showdown.Converter();
 
     function sendUserMessage() {
         const userMessage = $('#user-message').val();
@@ -9,7 +8,6 @@ $(document).ready(function() {
         // Append user message to the chat
         $('#chat-container').append(`<div class="alert alert-warning"><strong>You:</strong> ${userMessage}</div>`);
         var el = $(`<div class="alert alert-success"></div>`).appendTo('#chat-container');
-        console.log(el);
 
         // Call API and process the response
         callApi(userMessage, el).catch(error => {
