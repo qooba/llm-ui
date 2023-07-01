@@ -20,23 +20,23 @@ struct Args {
     model_architecture: llm::ModelArchitecture,
     model_path: PathBuf,
     #[arg(long, short = 'v')]
-    vocabulary_path: Option<PathBuf>,
+    tokenizer_path: Option<PathBuf>,
     #[arg(long, short = 'r')]
-    vocabulary_repository: Option<String>,
+    tokenizer_repository: Option<String>,
     #[arg(long, short = 'h')]
     host: String,
     #[arg(long, short = 'p')]
     port: u16,
 }
 impl Args {
-    pub fn to_vocabulary_source(&self) -> llm::VocabularySource {
-        match (&self.vocabulary_path, &self.vocabulary_repository) {
+    pub fn to_tokenizer_source(&self) -> llm::TokenizerSource {
+        match (&self.tokenizer_path, &self.tokenizer_repository) {
             (Some(_), Some(_)) => {
-                panic!("Cannot specify both --vocabulary-path and --vocabulary-repository");
+                panic!("Cannot specify both --tokenizer-path and --tokenizer-repository");
             }
-            (Some(path), None) => llm::VocabularySource::HuggingFaceTokenizerFile(path.to_owned()),
-            (None, Some(repo)) => llm::VocabularySource::HuggingFaceRemote(repo.to_owned()),
-            (None, None) => llm::VocabularySource::Model,
+            (Some(path), None) => llm::TokenizerSource::HuggingFaceTokenizerFile(path.to_owned()),
+            (None, Some(repo)) => llm::TokenizerSource::HuggingFaceRemote(repo.to_owned()),
+            (None, None) => llm::TokenizerSource::Embedded,
         }
     }
 }
@@ -86,13 +86,13 @@ fn infer(
     rx_infer: std::sync::mpsc::Receiver<String>,
     tx_callback: tokio::sync::mpsc::Sender<llm::InferenceResponse>,
 ) -> Result<()> {
-    let vocabulary_source = args.to_vocabulary_source();
+    let vocabulary_source = args.to_tokenizer_source();
     let model_architecture = args.model_architecture;
     let model_path = &args.model_path;
     let now = std::time::Instant::now();
 
     let llm_model = llm::load_dynamic(
-        model_architecture,
+        Some(model_architecture),
         &model_path,
         vocabulary_source,
         Default::default(),
