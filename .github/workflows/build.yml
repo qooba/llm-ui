@@ -15,7 +15,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: default
-          toolchain: stable
+          toolchain: "1.70.0" #stable
           override: true
       - name: Format
         working-directory: .
@@ -36,7 +36,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: default
-          toolchain: stable
+          toolchain: "1.70.0" #stable
           override: true
       - uses: Swatinem/rust-cache@v2
       - name: build and lint with clippy
@@ -61,7 +61,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: default
-          toolchain: "1.67.0"
+          toolchain: "1.70.0"
           override: true
       - uses: Swatinem/rust-cache@v2
       - name: Run tests
